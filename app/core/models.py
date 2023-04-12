@@ -1,6 +1,7 @@
 """
 Database models.
 """
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -42,3 +43,27 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
+
+class Artist(models.Model):
+    """Artist object."""
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Album(models.Model):
+    """Album object."""
+    title = models.CharField(max_length=255)
+    artist = models.ForeignKey(Artist, related_name='albums', on_delete=models.CASCADE)
+    release_date = models.DateField()
+    avg_rating = models.DecimalField(max_digits=3, decimal_places=2)
+    rating_count = models.IntegerField()
+    link = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['title', 'artist'], name='unique_title_for_artist')]
+
+
+    def __str__(self):
+        return self.title
