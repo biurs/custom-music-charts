@@ -1,6 +1,7 @@
 """
-URL mappings for the album app.
+URL mappings for the artist app.
 """
+
 from django.urls import (
     path,
     include
@@ -8,13 +9,13 @@ from django.urls import (
 
 from rest_framework.routers import DefaultRouter
 
-from album import views
+from artist import views
 
 
 router = DefaultRouter()
-router.register('', views.AlbumViewSet)
+router.register('', views.ArtistViewSet)
 
-app_name = 'album'
+app_name = 'artist'
 
 urlpatterns = [
     path('', include(router.urls)),

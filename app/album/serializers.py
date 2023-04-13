@@ -8,13 +8,6 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 from core.models import Album, Artist
 
 
-class ArtistSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Artist
-        fields = ['id', 'name']
-
-
 class ArtistHelperSerializer(serializers.ModelSerializer):
     """Serializer for artists."""
 
@@ -66,7 +59,7 @@ class AlbumSerializer(serializers.ModelSerializer):
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-    
+
         instance.save()
 
         return instance

@@ -47,6 +47,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Artist(models.Model):
     """Artist object."""
     name = models.CharField(max_length=255, unique=True)
+    origin_country = models.CharField(max_length=3, blank=True)
+    years_active = models.JSONField(default=list)
 
     def __str__(self):
         return self.name

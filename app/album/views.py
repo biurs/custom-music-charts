@@ -11,7 +11,7 @@ from rest_framework import (
 
 
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from core.models import Album, Artist
 from album import serializers
@@ -22,7 +22,12 @@ class AlbumViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.AlbumSerializer
     queryset = Album.objects.all().order_by('-id')
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE', 'POST']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
 
     def _params_to_ints(self, qs):
         """Convert a list of string to integers."""
@@ -49,7 +54,7 @@ class BaseAlbumAttrViewSet(mixins.DestroyModelMixin,
 
 class ArtistViewSet(BaseAlbumAttrViewSet):
     """Manage artists in the database."""
-    serializer_class = serializers.ArtistSerializer
+    serializer_class = serializers.ArtistHelperSerializer
     queryset = Artist.objects.all()
 
     def perform_create(self, serializer):

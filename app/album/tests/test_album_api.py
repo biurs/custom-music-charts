@@ -3,8 +3,6 @@ Tests for album APIs.
 """
 from decimal import Decimal
 
-import time
-
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -63,11 +61,103 @@ class PublicAlbumAPITests(TestCase):
 
 
 class PrivateAlbumApiTests(TestCase):
-    """Test authentiated API requests."""
+    """Test authenticated superuser API requests."""
 
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
+            'user@example.com',
+            'testpass123'
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_regular_user_retrieve_albums(self):
+        """Test retrieving a list of albums as regular user."""
+        create_album()
+        create_album(title='Sample Album 2')
+
+        res = self.client.get(ALBUMS_URL)
+
+        albums = Album.objects.all().order_by('-id')
+        serializer = AlbumSerializer(albums, many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
+
+    def test_regular_user_create_album_fails(self):
+        """Test creating an album as a regular user fails."""
+        payload = {
+            'title': 'Sample Album Title',
+            'artist': {'name': 'Sample Artist'},
+            'release_date': date.fromisoformat('2001-01-01'),
+            'avg_rating': Decimal('1.00'),
+            'rating_count': 1
+        }
+        res = self.client.post(ALBUMS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Album.objects.all().count(), 0)
+
+    def test_regular_user_partial_update_album_fails(self):
+        """Test partially updating an album as a regular user fails."""
+        original_title = 'Original Title'
+        original_rating_count = 1
+        album = create_album(title=original_title, rating_count=original_rating_count)
+
+        payload = {'rating_count': 2}
+        url = specific_album_url(album.id)
+        res = self.client.patch(url, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        album.refresh_from_db()
+        self.assertEqual(album.rating_count, original_rating_count)
+        self.assertEqual(album.title, original_title)
+
+    def test_regular_user_full_update_album_fails(self):
+        """Test fully updating an album as a regular user fails."""
+        album_dict = {
+            'title': 'Sample Album',
+            'release_date': date.fromisoformat('2000-01-01'),
+            'avg_rating': Decimal('1.00'),
+            'rating_count': 100,
+        }
+        album = create_album(**album_dict)
+
+        payload = {
+            'title': 'Sample Album 2',
+            'artist': {'name': 'Sample Artist 2'},
+            'release_date': date.fromisoformat('2000-02-02'),
+            'avg_rating': Decimal('2.00'),
+            'rating_count': 200,
+        }
+        url = specific_album_url(album.id)
+        res = self.client.put(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        album.refresh_from_db()
+        for k, v in album_dict.items():
+            if k == 'artist':
+                artist = Artist.objects.get(name=album['artist']['name'])
+                self.assertEqual(getattr(album, k), artist)
+            else:
+                self.assertEqual(getattr(album, k), v)
+
+    def test_regular_user_delete_album_fails(self):
+        """Test deleting album as a regular user fails."""
+        album = create_album()
+
+        url = specific_album_url(album.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Album.objects.filter(id=album.id).exists())
+
+
+class PrivateAlbumSuperuserApiTests(TestCase):
+    """Test authenticated superuser API requests."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_superuser(
             'user@example.com',
             'testpass123'
         )
@@ -117,7 +207,6 @@ class PrivateAlbumApiTests(TestCase):
         }
         res = self.client.post(ALBUMS_URL, payload, format='json')
 
-        #self.assertEqual(res.data['artist']['name'], 'd')
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         artists = Artist.objects.all()
         self.assertEqual(artists.count(), 1)
@@ -173,3 +262,13 @@ class PrivateAlbumApiTests(TestCase):
                 self.assertEqual(getattr(album, k), artist)
             else:
                 self.assertEqual(getattr(album, k), v)
+
+    def test_delete_album(self):
+        """Test deleting an album."""
+        album = create_album()
+
+        url = specific_album_url(album.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Album.objects.filter(id=album.id).exists())
