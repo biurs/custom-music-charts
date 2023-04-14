@@ -10,7 +10,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from core.models import Album, Artist
+from core.models import Album, Artist, Genre
 
 from album.serializers import AlbumSerializer
 
@@ -27,7 +27,7 @@ def specific_album_url(album_id):
 
 def create_artist(name='Sample Artist Name'):
     """Create and return a sample artist"""
-    artist = Artist.objects.get_or_create(name=name)[0]
+    artist = Artist.objects.get_or_create(name=name, start_year=2000)[0]
     return artist
 
 
@@ -272,3 +272,122 @@ class PrivateAlbumSuperuserApiTests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Album.objects.filter(id=album.id).exists())
+
+    def test_create_album_with_new_genres(self):
+        """Test creating album with new genres."""
+        payload = {
+            'title': 'Sample Album Name',
+            'artist': {'name': 'Test Artist'},
+            'release_date': date.fromisoformat('2000-01-01'),
+            'avg_rating': Decimal('1.00'),
+            'rating_count': 10,
+            'primary_genres': [{'name': 'Indie Rock'}, {'name': 'Post Rock'}],
+            'secondary_genres': [{'name': 'Free Jazz'}, {'name': 'Harsh Noise'}],
+        }
+        res = self.client.post(ALBUMS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        albums = Album.objects.all()
+        self.assertEqual(albums.count(), 1)
+        album = albums[0]
+        self.assertEqual(album.primary_genres.count(), 2)
+        self.assertEqual(album.secondary_genres.count(), 2)
+        for genre in payload['primary_genres'] + payload['secondary_genres']:
+            exists_primary = album.primary_genres.filter(
+                name=genre['name']
+            ).exists()
+            exists_secondary = album.secondary_genres.filter(
+                name=genre['name']
+            ).exists()
+            self.assertTrue(exists_primary or exists_secondary)
+
+    def test_create_album_with_existing_genres(self):
+        """Test creating an album with existing genres."""
+        genre1 = Genre.objects.create(name='Indie Rock')
+        genre2 = Genre.objects.create(name='Free Jazz')
+        payload = {
+            'title': 'Sample Album Name',
+            'artist': {'name': 'Test Artist'},
+            'release_date': date.fromisoformat('2000-01-01'),
+            'avg_rating': Decimal('1.00'),
+            'rating_count': 10,
+            'primary_genres': [{'name': 'Indie Rock'}, {'name': 'Post Rock'}],
+            'secondary_genres': [{'name': 'Free Jazz'}, {'name': 'Harsh Noise'}],
+        }
+
+        res = self.client.post(ALBUMS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        albums = Album.objects.all()
+        self.assertEqual(albums.count(), 1)
+        album = albums[0]
+        self.assertEqual(album.primary_genres.count(), 2)
+        self.assertEqual(album.secondary_genres.count(), 2)
+        self.assertIn(genre1, album.primary_genres.all())
+        self.assertIn(genre2, album.secondary_genres.all())
+        for genre in payload['primary_genres'] + payload['secondary_genres']:
+            exists_primary = album.primary_genres.filter(
+                name=genre['name']
+            ).exists()
+            exists_secondary = album.secondary_genres.filter(
+                name=genre['name']
+            ).exists()
+            self.assertTrue(exists_primary or exists_secondary)
+
+    def test_create_genre_on_update(self):
+        """Test creating genres when updating a recipe."""
+        album = create_album()
+
+        payload = {
+            'primary_genres': [{'name': 'Indie Rock'}],
+            'secondary_genres': [{'name': 'Dream Pop'}],
+        }
+        url = specific_album_url(album.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        new_genre1 = Genre.objects.get(name='Indie Rock')
+        new_genre2 = Genre.objects.get(name='Dream Pop')
+        self.assertIn(new_genre1, album.primary_genres.all())
+        self.assertIn(new_genre2, album.secondary_genres.all())
+
+
+    def test_assign_genre_on_update(self):
+        """Test assigning an existing genre on update album."""
+        genre1 = Genre.objects.create(name='Indie Rock')
+        genre2 = Genre.objects.create(name='Free Jazz')
+        album = create_album()
+        album.primary_genres.add(genre1)
+        album.secondary_genres.add(genre2)
+
+        genre_added1 = Genre.objects.create(name='Black Metal')
+        genre_added2 = Genre.objects.create(name='Dream Pop')
+        payload = {
+            'primary_genres': [{'name': 'Black Metal'}],
+            'secondary_genres': [{'name': 'Dream Pop'}],
+            }
+        url = specific_album_url(album.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        album.refresh_from_db()
+        self.assertIn(genre_added1, album.primary_genres.all())
+        self.assertNotIn(genre1, album.primary_genres.all())
+        self.assertIn(genre_added2, album.secondary_genres.all())
+        self.assertNotIn(genre2, album.secondary_genres.all())\
+
+    def test_clear_album_genres(self):
+        """Test clearing an albums genres."""
+        genre1 = Genre.objects.create(name='Indie Rock')
+        genre2 = Genre.objects.create(name='Dream Pop')
+        album = create_album()
+        album.primary_genres.add(genre1)
+        album.secondary_genres.add(genre2)
+
+        payload = {'primary_genres': [], 'secondary_genres': []}
+        url = specific_album_url(album.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(album.primary_genres.count(), 0)
+        self.assertEqual(album.secondary_genres.count(), 0)

@@ -26,7 +26,7 @@ def create_artist(**params):
     defaults = {
         'name': 'Sample Artist Name',
         'origin_country': 'USA',
-        'years_active': [{'start': 2000, 'end': 2010}, {'start': 2014, 'end': 2015}]
+        'start_year': 2000,
     }
     defaults.update(params)
 
@@ -73,7 +73,8 @@ class PrivateArtistApiTests(TestCase):
     def test_regular_user_create_artist_fails(self):
         """Test creating an artist as a regular user fails."""
         payload = {
-            'name': 'Sample Artist'
+            'name': 'Sample Artist',
+            'start_year': 2000,
         }
         res = self.client.post(ARTISTS_URL, payload, format='json')
 
@@ -100,14 +101,14 @@ class PrivateArtistApiTests(TestCase):
         artist_dict = {
             'name': 'Sample Artist Name',
             'origin_country': 'USA',
-            'years_active': [{'start': 1990, 'end': 1995}]
+            'start_year': 2000,
         }
         artist = create_artist(**artist_dict)
 
         payload = {
             'name': 'Sample Artist Name 2',
             'origin_country': 'CAN',
-            'years_active': [{'start': 2000, 'end': 2005}]
+            'start_year': 2001
         }
         url = specific_artist_url(artist.id)
         res = self.client.put(url, payload, format='json')
@@ -127,6 +128,62 @@ class PrivateArtistApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Artist.objects.filter(id=artist.id).exists())
 
+    def test_filter_artist_by_country(self):
+        """Test filtering artist by country"""
+        name1 = 'Artist 1'
+        name2 = 'Artist 2'
+        name3 = 'Artist 3'
+
+        country1 = 'USA'
+        country2 = 'USA'
+        country3 = 'CAN'
+
+        artist1 = create_artist(name=name1, origin_country=country1)
+        artist2 = create_artist(name=name2, origin_country=country2)
+        artist3 = create_artist(name=name3, origin_country=country3)
+
+        params = {'origin_country': f'{country1}'}
+        res = self.client.get(ARTISTS_URL, params)
+
+        s1 = ArtistSerializer(artist1)
+        s2 = ArtistSerializer(artist2)
+        s3 = ArtistSerializer(artist3)
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
+
+    def test_filter_arist_by_active_years(self):
+        """Test filtering an artist by active years."""
+        name1 = 'Artist 1'
+        name2 = 'Artist 2'
+        name3 = 'Artist 3'
+        name4 = 'Artist 4'
+
+        start1 = 2000
+        start2 = 2005
+        start3 = 2011
+        start4 = 2000
+
+        end1 = 2005
+        end2 = 2010
+        end3 = 2011
+
+        artist1 = create_artist(name=name1, start_year=start1, end_year=end1)
+        artist2 = create_artist(name=name2, start_year=start2, end_year=end2)
+        artist3 = create_artist(name=name3, start_year=start3, end_year=end3)
+        artist4 = create_artist(name=name4, start_year=start4)
+
+        params = {'year': '2006,2010'}
+        res = self.client.get(ARTISTS_URL, params)
+
+        s1 = ArtistSerializer(artist1)
+        s2 = ArtistSerializer(artist2)
+        s3 = ArtistSerializer(artist3)
+        s4 = ArtistSerializer(artist4)
+        self.assertNotIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
+        self.assertIn(s4.data, res.data)
 
 class PrivateArtistSuperuserApiTests(TestCase):
     """Test authenticated superuser API requests."""
@@ -156,7 +213,7 @@ class PrivateArtistSuperuserApiTests(TestCase):
         payload = {
             'name': 'Sample Artist Name',
             'origin_country': 'USA',
-            'years_active': [{'start': 2000, 'end': 2001}],
+            'start_year': 2000,
         }
         res = self.client.post(ARTISTS_URL, payload, format='json')
 
@@ -187,7 +244,7 @@ class PrivateArtistSuperuserApiTests(TestCase):
         artist = {
             'name': 'Sample Artist Name 1',
             'origin_country': 'USA',
-            'years_active': [{'start': 2000, 'end': 2001}],
+            'start_year': 2000,
         }
 
         artist = create_artist(**artist)
@@ -195,7 +252,7 @@ class PrivateArtistSuperuserApiTests(TestCase):
         payload = {
             'name': 'Sample Artist Name 2',
             'origin_country': 'CAN',
-            'years_active': [{'start': 2020, 'end': 2021}]
+            'start_year': 2020,
         }
 
         url = specific_artist_url(artist.id)

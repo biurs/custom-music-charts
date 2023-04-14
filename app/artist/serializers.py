@@ -10,5 +10,5 @@ class ArtistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Artist
-        fields = ['id', 'name', 'origin_country', 'years_active']
+        fields = ['id', 'name', 'origin_country', 'start_year', 'end_year']
         read_only_fields = ['id']

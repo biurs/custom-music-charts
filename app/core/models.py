@@ -3,6 +3,7 @@ Database models.
 """
 from django.conf import settings
 from django.db import models
+from django.db.models import Q, F
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -44,14 +45,27 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = 'email'
 
+
 class Artist(models.Model):
     """Artist object."""
     name = models.CharField(max_length=255, unique=True)
     origin_country = models.CharField(max_length=3, blank=True)
-    years_active = models.JSONField(default=list)
+    start_year = models.IntegerField(null=True, blank=True)
+    end_year = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.name
+
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=Q(
+                    end_year__gte=models.F('start_year')
+                ),
+                name='end_year_gte_start_year',
+            )
+        ]
 
 
 class Album(models.Model):
@@ -62,10 +76,18 @@ class Album(models.Model):
     avg_rating = models.DecimalField(max_digits=3, decimal_places=2)
     rating_count = models.IntegerField()
     link = models.CharField(max_length=255, blank=True)
+    primary_genres = models.ManyToManyField('Genre', related_name='primary_albums')
+    secondary_genres = models.ManyToManyField('Genre', related_name='secondary_albums')
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['title', 'artist'], name='unique_title_for_artist')]
-
+        constraints = [
+            models.UniqueConstraint(fields=['title', 'artist'], name='unique_title_for_artist')
+        ]
 
     def __str__(self):
         return self.title
+
+
+class Genre(models.Model):
+    """Genres for albums"""
+    name = models.CharField(max_length=255)
