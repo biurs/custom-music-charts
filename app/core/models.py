@@ -71,23 +71,67 @@ class Artist(models.Model):
 class Album(models.Model):
     """Album object."""
     title = models.CharField(max_length=255)
-    artist = models.ForeignKey(Artist, related_name='albums', on_delete=models.CASCADE)
+    artist = models.ManyToManyField('Artist', related_name='artists_albums')
     release_date = models.DateField()
     avg_rating = models.DecimalField(max_digits=3, decimal_places=2)
     rating_count = models.IntegerField()
     link = models.CharField(max_length=255, blank=True)
-    primary_genres = models.ManyToManyField('Genre', related_name='primary_albums')
-    secondary_genres = models.ManyToManyField('Genre', related_name='secondary_albums')
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['title', 'artist'], name='unique_title_for_artist')
-        ]
+    primary_genres = models.ManyToManyField('Genre', related_name='primary_albums', blank=True)
+    secondary_genres = models.ManyToManyField('Genre', related_name='secondary_albums', blank=True)
+    tags = models.ManyToManyField('Tag', related_name='tag_albums', blank=True)
 
     def __str__(self):
         return self.title
 
 
 class Genre(models.Model):
-    """Genres for albums"""
+    """Genres for albums."""
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Tag(models.Model):
+    """Tags for albums."""
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class List(models.Model):
+    """Lists of Albums."""
     name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    entries = models.ManyToManyField('Album', through='Entry', blank=True)
+    owner = models.ForeignKey('User', related_name='users_lists', on_delete=models.CASCADE)
+    is_public = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name
+
+
+class Entry(models.Model):
+    """Entry for each album in list."""
+    order = models.IntegerField()
+    album = models.ForeignKey('Album', on_delete=models.CASCADE)
+    list = models.ForeignKey('List', on_delete=models.CASCADE)
+    album_description = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['album', 'list'], name='unique_album_for_list'),
+            models.UniqueConstraint(fields=['order', 'list'], name='unique_order_for_list')
+        ]
+
+    def save(self, *args, **kwargs):
+        """Overwrite save method to allow order field to autoincrement."""
+        if not self.id:
+            last_entry = Entry.objects.all().order_by('order').last()
+            if not last_entry:
+                self.order = 1
+            else:
+                self.order = last_entry.order + 1
+
+        super(Entry, self).save(*args, **kwargs)

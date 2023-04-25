@@ -68,7 +68,7 @@ class PrivateArtistApiTests(TestCase):
         artists = Artist.objects.all().order_by('-id')
         serializer = ArtistSerializer(artists, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, serializer.data)
+        self.assertEqual(res.data['results'], serializer.data)
 
     def test_regular_user_create_artist_fails(self):
         """Test creating an artist as a regular user fails."""
@@ -148,11 +148,11 @@ class PrivateArtistApiTests(TestCase):
         s1 = ArtistSerializer(artist1)
         s2 = ArtistSerializer(artist2)
         s3 = ArtistSerializer(artist3)
-        self.assertIn(s1.data, res.data)
-        self.assertIn(s2.data, res.data)
-        self.assertNotIn(s3.data, res.data)
+        self.assertIn(s1.data, res.data['results'])
+        self.assertIn(s2.data, res.data['results'])
+        self.assertNotIn(s3.data, res.data['results'])
 
-    def test_filter_arist_by_active_years(self):
+    def test_filter_artist_by_active_years(self):
         """Test filtering an artist by active years."""
         name1 = 'Artist 1'
         name2 = 'Artist 2'
@@ -180,10 +180,10 @@ class PrivateArtistApiTests(TestCase):
         s2 = ArtistSerializer(artist2)
         s3 = ArtistSerializer(artist3)
         s4 = ArtistSerializer(artist4)
-        self.assertNotIn(s1.data, res.data)
-        self.assertIn(s2.data, res.data)
-        self.assertNotIn(s3.data, res.data)
-        self.assertIn(s4.data, res.data)
+        self.assertNotIn(s1.data, res.data['results'])
+        self.assertIn(s2.data, res.data['results'])
+        self.assertNotIn(s3.data, res.data['results'])
+        self.assertIn(s4.data, res.data['results'])
 
 class PrivateArtistSuperuserApiTests(TestCase):
     """Test authenticated superuser API requests."""
@@ -206,7 +206,7 @@ class PrivateArtistSuperuserApiTests(TestCase):
         artists = Artist.objects.all().order_by('-id')
         serializer = ArtistSerializer(artists, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, serializer.data)
+        self.assertEqual(res.data['results'], serializer.data)
 
     def test_create_artist(self):
         """Test creating an artist"""

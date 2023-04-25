@@ -14,6 +14,7 @@ class ArtistHelperSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
         fields = ['id', 'name']
+        read_only_fields = ['id']
         extra_kwargs = {
             'name': {
                 'validators': []
@@ -28,11 +29,16 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
         fields = ['id', 'name']
         read_only_fields = ['id']
+        extra_kwargs = {
+                'name': {
+                    'validators': []
+                }
+        }
 
 
 class AlbumSerializer(serializers.ModelSerializer):
     """Serializer for albums."""
-    artist = ArtistHelperSerializer(many=False, required=True)
+    artist = ArtistHelperSerializer(many=True, required=True)
     release_date = serializers.DateField()
     primary_genres = GenreSerializer(many=True, required=False)
     secondary_genres = GenreSerializer(many=True, required=False)
@@ -43,13 +49,12 @@ class AlbumSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-    def _get_or_create_artist(self, artist_name):
+    def _get_or_create_artist(self, artists, album):
         """Handle getting or creating artists as needed."""
-        try:
-            artist_obj = Artist.objects.get(name=artist_name)
-        except Artist.DoesNotExist:
-            artist_obj = Artist.objects.create(name=artist_name)
-        return artist_obj
+        for artist in artists:
+            artist_obj = Artist.objects.get_or_create(**artist)[0]
+            album.artist.add(artist_obj)
+
 
     def _get_or_create_genres(self, genres, album, primary):
         """Handle getting and creating genres."""
@@ -63,12 +68,11 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create an album."""
-        artist_data = validated_data.pop('artist')
-        artist_name = artist_data.pop('name')
+        artists = validated_data.pop('artist', [])
         primary_genres = validated_data.pop('primary_genres', [])
         secondary_genres = validated_data.pop('secondary_genres', [])
-        artist = self._get_or_create_artist(artist_name)
-        album = Album.objects.create(artist=artist, **validated_data)
+        album = Album.objects.create(**validated_data)
+        self._get_or_create_artist(artists=artists, album=album)
         self._get_or_create_genres(genres=primary_genres, album=album, primary=True)
         self._get_or_create_genres(genres=secondary_genres, album=album, primary=False)
 
@@ -76,14 +80,13 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Update an album."""
-        artist_data = validated_data.pop('artist', None)
+        artists = validated_data.pop('artist', None)
         primary_genres = validated_data.pop('primary_genres', None)
         secondary_genres = validated_data.pop('secondary_genres', None)
 
-        if artist_data:
-            artist_name = artist_data.pop('name')
-            artist = self._get_or_create_artist(artist_name)
-            instance.artist = artist
+        if artists is not None:
+            instance.artist.clear()
+            self._get_or_create_artist(artists=artists, album=instance)
         if primary_genres is not None:
             instance.primary_genres.clear()
             self._get_or_create_genres(genres=primary_genres, album=instance, primary=True)

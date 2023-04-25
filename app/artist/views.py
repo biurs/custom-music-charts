@@ -8,7 +8,7 @@ from rest_framework import (
 )
 
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
 
 from django_filters import rest_framework as filters
 
@@ -28,9 +28,10 @@ class ArtistViewSet(viewsets.ModelViewSet):
 
 
     def get_permissions(self):
-        if self.request.method in ['PUT', 'PATCH', 'DELETE', 'POST']:
+        if self.request.method in SAFE_METHODS:
+            return [IsAuthenticated()]
+        else:
             return [IsAdminUser()]
-        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         """Create a new album."""

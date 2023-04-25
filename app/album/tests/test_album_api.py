@@ -35,7 +35,6 @@ def create_album(**params):
     """Create and return a sample album."""
     defaults = {
         'title': 'Sample Album title',
-        'artist': create_artist(),
         'release_date': date.fromisoformat('2000-01-01'),
         'avg_rating': Decimal('1.00'),
         'rating_count': 1_000,
@@ -44,6 +43,9 @@ def create_album(**params):
     defaults.update(params)
 
     album = Album.objects.create(**defaults)
+    album.artist.add(create_artist())
+    album.save()
+
     return album
 
 
@@ -61,7 +63,7 @@ class PublicAlbumAPITests(TestCase):
 
 
 class PrivateAlbumApiTests(TestCase):
-    """Test authenticated superuser API requests."""
+    """Test authenticated user API requests."""
 
     def setUp(self):
         self.client = APIClient()
@@ -78,16 +80,42 @@ class PrivateAlbumApiTests(TestCase):
 
         res = self.client.get(ALBUMS_URL)
 
-        albums = Album.objects.all().order_by('-id')
+        albums = Album.objects.all().order_by('id')
         serializer = AlbumSerializer(albums, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, serializer.data)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_regular_user_retrieve_albums_pagination(self):
+        """Test retrieving a large list of albums as regular user."""
+        for i in range(52):
+            create_album(title=i)
+
+
+        res1 = self.client.get(ALBUMS_URL)
+        res2 = self.client.get(ALBUMS_URL, {'page':2})
+        res3 = self.client.get(ALBUMS_URL, {'page':3})
+
+
+        albums_page1 = Album.objects.all().order_by('id')[:25]
+        albums_page2 = Album.objects.all().order_by('id')[25:50]
+        albums_page3 = Album.objects.all().order_by('id')[50:52]
+
+        serializer1 = AlbumSerializer(albums_page1, many=True)
+        serializer2 = AlbumSerializer(albums_page2, many=True)
+        serializer3 = AlbumSerializer(albums_page3, many=True)
+
+        self.assertEqual(res1.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(res1.data['results'], serializer1.data)
+        self.assertEqual(res2.data['results'], serializer2.data)
+        self.assertEqual(res3.data['results'], serializer3.data)
+
 
     def test_regular_user_create_album_fails(self):
         """Test creating an album as a regular user fails."""
         payload = {
             'title': 'Sample Album Title',
-            'artist': {'name': 'Sample Artist'},
+            'artist': [{'name': 'Sample Artist'}],
             'release_date': date.fromisoformat('2001-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 1
@@ -124,7 +152,7 @@ class PrivateAlbumApiTests(TestCase):
 
         payload = {
             'title': 'Sample Album 2',
-            'artist': {'name': 'Sample Artist 2'},
+            'artist': [{'name': 'Sample Artist 2'}],
             'release_date': date.fromisoformat('2000-02-02'),
             'avg_rating': Decimal('2.00'),
             'rating_count': 200,
@@ -170,16 +198,16 @@ class PrivateAlbumSuperuserApiTests(TestCase):
 
         res = self.client.get(ALBUMS_URL)
 
-        albums = Album.objects.all().order_by('-id')
+        albums = Album.objects.all().order_by('id')
         serializer = AlbumSerializer(albums, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, serializer.data)
+        self.assertEqual(res.data['results'], serializer.data)
 
     def test_create_album_with_new_artist(self):
         """Test creating an album"""
         payload = {
             'title': 'Sample Album Title',
-            'artist': {'name': 'Sample Artist'},
+            'artist': [{'name': 'Sample Artist'}],
             'release_date': date.fromisoformat('2001-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 1
@@ -190,8 +218,8 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         album = Album.objects.get(id=res.data['id'])
         for k, v in payload.items():
             if k == 'artist':
-                artist = Artist.objects.get(name=payload['artist']['name'])
-                self.assertEqual(getattr(album, k), artist)
+                artist = Artist.objects.get(name=payload['artist'][0]['name'])
+                self.assertIn(artist, album.artist.all())
             else:
                 self.assertEqual(getattr(album, k), v)
 
@@ -200,7 +228,7 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         artist = create_artist(name='Sample Artist')
         payload = {
             'title': 'Sample Album',
-            'artist': {'name': 'Sample Artist'},
+            'artist': [{'name': 'Sample Artist'}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 100,
@@ -213,12 +241,40 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         albums = Album.objects.all()
         self.assertEqual(albums.count(), 1)
         album = albums[0]
-        self.assertEqual(album.artist, artist)
-        self.assertTrue(
-            Artist.objects.filter(
-            name=payload['artist']['name']
-            ).exists()
-        )
+        self.assertIn(artist, album.artist.all())
+        for artist in payload['artist']:
+            self.assertTrue(
+                Artist.objects.filter(
+                name=artist['name']
+                ).exists()
+            )
+
+    def test_create_album_with_no_artist_fail(self):
+        """Test creating album with no artist fails."""
+        payload = {
+            'title': 'Sample Album',
+            'release_date': date.fromisoformat('2000-01-01'),
+            'avg_rating': Decimal('1.00'),
+            'rating_count': 100,
+        }
+        res = self.client.post(ALBUMS_URL, payload)
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Album.objects.all().count(), 0)
+
+    def test_create_album_multiple_artists(self):
+        """Test creating an album with multiple artists."""
+        payload = {
+            'title': 'Sample Album',
+            'artist': [{'name': 'Sample Artist'}, {'name': 'Sample Artist 2'}],
+            'release_date': date.fromisoformat('2000-01-01'),
+            'avg_rating': Decimal('1.00'),
+            'rating_count': 100,
+        }
+
+        res = self.client.post(ALBUMS_URL, payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Artist.objects.all().count(), 2)
 
     def test_partial_update(self):
         """Test partial update of album."""
@@ -246,7 +302,7 @@ class PrivateAlbumSuperuserApiTests(TestCase):
 
         payload = {
             'title': 'Sample Album 2',
-            'artist': {'name': 'Sample Artist 2'},
+            'artist': [{'name': 'Sample Artist 2'}],
             'release_date': date.fromisoformat('2000-02-02'),
             'avg_rating': Decimal('2.00'),
             'rating_count': 200,
@@ -258,8 +314,8 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         album.refresh_from_db()
         for k, v in payload.items():
             if k == 'artist':
-                artist = Artist.objects.get(name=payload['artist']['name'])
-                self.assertEqual(getattr(album, k), artist)
+                artist = Artist.objects.get(name=payload['artist'][0]['name'])
+                self.assertIn(artist, album.artist.all())
             else:
                 self.assertEqual(getattr(album, k), v)
 
@@ -277,7 +333,7 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         """Test creating album with new genres."""
         payload = {
             'title': 'Sample Album Name',
-            'artist': {'name': 'Test Artist'},
+            'artist': [{'name': 'Test Artist'}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 10,
@@ -307,7 +363,7 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         genre2 = Genre.objects.create(name='Free Jazz')
         payload = {
             'title': 'Sample Album Name',
-            'artist': {'name': 'Test Artist'},
+            'artist': [{'name': 'Test Artist'}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 10,
@@ -319,10 +375,12 @@ class PrivateAlbumSuperuserApiTests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         albums = Album.objects.all()
+        genres = Genre.objects.all()
         self.assertEqual(albums.count(), 1)
         album = albums[0]
         self.assertEqual(album.primary_genres.count(), 2)
         self.assertEqual(album.secondary_genres.count(), 2)
+        self.assertEqual(genres.count(), 4)
         self.assertIn(genre1, album.primary_genres.all())
         self.assertIn(genre2, album.secondary_genres.all())
         for genre in payload['primary_genres'] + payload['secondary_genres']:

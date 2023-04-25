@@ -1,5 +1,5 @@
 """
-Serializers for the album APIs.
+Serializers for the artist APIs.
 """
 from rest_framework import serializers
 

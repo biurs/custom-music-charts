@@ -58,7 +58,6 @@ class ModelTests(TestCase):
         artist = models.Artist.objects.create(name='Sample Artist Name')
         album = models.Album.objects.create(
             title='Sample Album Name',
-            artist=artist,
             release_date=date.fromisoformat('2000-01-01'),
             avg_rating=Decimal('1.00'),
             rating_count=1_000,
@@ -79,26 +78,3 @@ class ModelTests(TestCase):
 
         with self.assertRaises(IntegrityError):
             models.Artist.objects.create(name=name)
-
-    def test_create_duplicate_album_fails(self):
-        """Test creating a duplicate album with same title and artist fails."""
-        artist = models.Artist.objects.create(name='Sample Artist Name')
-
-        album_name = 'Sample Album Name'
-
-        models.Album.objects.create(
-            title=album_name,
-            artist=artist,
-            release_date=date.fromisoformat('2000-01-01'),
-            avg_rating=Decimal('1.00'),
-            rating_count=1_000,
-        )
-
-        with self.assertRaises(IntegrityError):
-            models.Album.objects.create(
-                title=album_name,
-                artist=artist,
-                release_date=date.fromisoformat('2000-02-02'),
-                avg_rating=Decimal('2.00'),
-                rating_count=2_000,
-            )
