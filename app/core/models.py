@@ -100,38 +100,16 @@ class Tag(models.Model):
         return self.name
 
 
-class List(models.Model):
-    """Lists of Albums."""
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    entries = models.ManyToManyField('Album', through='Entry', blank=True)
-    owner = models.ForeignKey('User', related_name='users_lists', on_delete=models.CASCADE)
-    is_public = models.BooleanField(default=False)
-
-    def __str__(self):
-        return self.name
-
-
 class Entry(models.Model):
-    """Entry for each album in list."""
-    order = models.IntegerField()
+    """Each Item entry on a list"""
     album = models.ForeignKey('Album', on_delete=models.CASCADE)
-    list = models.ForeignKey('List', on_delete=models.CASCADE)
-    album_description = models.TextField(blank=True)
+    owner_list = models.ForeignKey('List', related_name='entries', on_delete=models.CASCADE)
+    description = models.CharField(max_length=4096, blank=True)
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['album', 'list'], name='unique_album_for_list'),
-            models.UniqueConstraint(fields=['order', 'list'], name='unique_order_for_list')
-        ]
 
-    def save(self, *args, **kwargs):
-        """Overwrite save method to allow order field to autoincrement."""
-        if not self.id:
-            last_entry = Entry.objects.all().order_by('order').last()
-            if not last_entry:
-                self.order = 1
-            else:
-                self.order = last_entry.order + 1
-
-        super(Entry, self).save(*args, **kwargs)
+class List(models.Model):
+    """Custom Lists"""
+    label = models.CharField(max_length=255)
+    user = models.ForeignKey('User', related_name='user_lists', on_delete=models.CASCADE)
+    albums = models.ManyToManyField(Album, through='Entry')
+    public = models.BooleanField(default=False)
