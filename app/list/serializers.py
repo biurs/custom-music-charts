@@ -29,7 +29,7 @@ class ListDetailSerializer(serializers.ModelSerializer):
 
     def _get_album(self, album_id):
         """Handle getting albums as needed."""
-        return Album.objects.get(id=album_id)
+        return Album.objects.get(album_id=album_id)
 
     def create(self, validated_data):
         albums_data = validated_data.pop('albums')

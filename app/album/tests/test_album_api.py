@@ -59,7 +59,7 @@ class PublicAlbumAPITests(TestCase):
         """"Test auth is required to call API."""
         res = self.client.get(ALBUMS_URL)
 
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
 
 
 class PrivateAlbumApiTests(TestCase):

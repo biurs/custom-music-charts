@@ -76,6 +76,9 @@ class PublicListAPITests(TestCase):
 
     def test_auth_required(self):
         """Test auth is required to call API."""
-        res = self.client.get(LISTS_URL)
+        query_params = {
+            'public': True
+        }
+        res = self.client.get(LISTS_URL, query_params)
 
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)

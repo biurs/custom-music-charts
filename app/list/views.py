@@ -29,13 +29,14 @@ class ListViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ListDetailSerializer
     queryset = List.objects.all()
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+
 
     def get_queryset(self):
+        queryset = self.queryset
         public = self.request.query_params.get('public')
         if public:
-            queryset = queryset.filter(public=True).order_by('-id')
-        queryset = queryset.filter(user=self.request.user).distinct().order_by('-id')
+            return queryset.filter(public=True).order_by('-id')
+        return queryset.filter(user=self.request.user).distinct().order_by('-id')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
