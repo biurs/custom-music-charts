@@ -60,19 +60,26 @@ def create_entry(album, list, **params):
     """Create and return sample Entry"""
     defaults = {
         'description': 'Sample Entry Description',
-        'album': album,
-        'list': list,
     }
     defaults.update(params)
-    entry = Entry.objects.create(**params)
+    entry = Entry.objects.create(
+        album=album,
+        owner_list=list,
+        **params,
+        )
 
     return entry
+
 
 class PublicListAPITests(TestCase):
     """Test unauthenticated API requests."""
 
     def setUp(self):
         self.client = APIClient()
+        self.test_user = get_user_model().objects.create_user(
+            'user1@example.com'
+            'testpass1234'
+        )
 
     def test_auth_required(self):
         """Test auth is required to call API."""
@@ -82,3 +89,86 @@ class PublicListAPITests(TestCase):
         res = self.client.get(LISTS_URL, query_params)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_retrieve_list(self):
+        """Test retrieving a public list."""
+        album1 = create_album()
+        list1 = create_list(user=self.test_user, public=False)
+        create_entry(album1, list1)
+        query_params = {
+            'public': True
+        }
+
+        res = self.client.get(LISTS_URL, query_params)
+
+        lists = List.objects.filter(public=True).order_by('id')
+        serializer = ListSerializer(lists, many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+
+class PrivateListAPITests(TestCase):
+    """Test authenticated user API requests."""
+    def setUp(self):
+        self.client = APIClient()
+        self.user2 = get_user_model().objects.create_user(
+            'user2@example.com'
+            'testpass1234'
+        )
+        self.user = get_user_model().objects.create_user(
+            'user1@example.com'
+            'testpass1234'
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_regular_user_retrieve_list(self):
+        """Test retrieving a private list as a regular user."""
+        album1 = create_album()
+        list1 = create_list(user=self.user2, public=True, label='label2')
+        list2 = create_list(user=self.user2, public=False, label='label1')
+
+        create_entry(album1, list1)
+        create_entry(album1, list2)
+        query_params = {
+            'public': True
+        }
+
+        res = self.client.get(LISTS_URL, query_params)
+
+        lists = List.objects.filter(public=True).order_by('-id')
+        serializer = ListSerializer(lists, many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_list_limited_to_user(self):
+        """Test lists returned are limited ot user."""
+        create_list(user=self.user2)
+        create_list(user=self.user)
+
+        res = self.client.get(LISTS_URL)
+
+        lists = List.objects.filter(user=self.user)
+        serializer = ListSerializer(lists, many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_create_list_with_items(self):
+        """Test creating a list with items."""
+        album1 = create_album()
+        payload = {
+            'label': 'Test List',
+            'albums': [
+                {
+                    'album': {
+                        'id': album1.id
+                    },
+                    'description': 'Sample Description',
+                }
+            ]
+        }
+        res = self.client.post(LISTS_URL, payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        lists = List.objects.filter(user=self.user)
+        self.assertEqual(lists.count(), 1)
+        list = lists[0]
+        self.assertEqual(list.entries.count(), 1)

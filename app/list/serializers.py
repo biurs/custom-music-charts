@@ -11,6 +11,25 @@ from core.models import (
     Entry
 )
 
+
+class AlbumHelperSerializer(serializers.ModelSerializer):
+    """Album Helper Serializer"""
+
+    class Meta:
+        model = Album
+        fields = ['id']
+        read_only_fields = ['id']
+
+
+class EntrySerializer(serializers.ModelSerializer):
+    """Serializers for Entries"""
+    album = AlbumHelperSerializer()
+
+    class Meta:
+        model = Entry
+        fields = ['album', 'description']
+
+
 class ListSerializer(serializers.ModelSerializer):
     """Serializer for lists with basic info."""
 
@@ -22,22 +41,24 @@ class ListSerializer(serializers.ModelSerializer):
 
 class ListDetailSerializer(serializers.ModelSerializer):
     """Serializer for lists with detailed info."""
+    albums = EntrySerializer(many=True, source='entries')
 
     class Meta:
         model = List
         fields = ['id', 'label', 'user', 'albums']
+        read_only_fields = ['id', 'user']
 
-    def _get_album(self, album_id):
+    def _get_album(self, album):
         """Handle getting albums as needed."""
-        return Album.objects.get(album_id=album_id)
+        return Album.objects.get(**album)
 
     def create(self, validated_data):
-        albums_data = validated_data.pop('albums')
+        albums_data = validated_data.pop('entries', [])
         list = List.objects.create(**validated_data)
         for entry_data in albums_data:
             album_data = entry_data.pop('album')
             album = self._get_album(album_data)
-            Entry.objects.create(owned_list=list, album=album, **entry_data)
+            Entry.objects.create(owner_list=list, album=album, **entry_data)
 
         return list
 
