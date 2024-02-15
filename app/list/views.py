@@ -15,7 +15,7 @@ from rest_framework import (
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, SAFE_METHODS
 
 from core.models import (
     Artist,
@@ -26,16 +26,16 @@ from core.models import (
 from list import serializers
 
 class ListViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.ListDetailSerializer
+    serializer_class = serializers.ListSerializer
     queryset = List.objects.all()
     authentication_classes = [TokenAuthentication]
 
-
     def get_queryset(self):
         queryset = self.queryset
-        public = self.request.query_params.get('public')
-        if public:
-            return queryset.filter(public=True).order_by('-id')
+        if self.request.method in SAFE_METHODS:
+            public = self.request.query_params.get('public')
+            if public:
+                return queryset.filter(public=True).order_by('-id')
         return queryset.filter(user=self.request.user).distinct().order_by('-id')
 
     def perform_create(self, serializer):
@@ -44,5 +44,7 @@ class ListViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         """Return the serializer class for request."""
         if self.action == 'list':
-            return serializers.ListSerializer
+            return serializers.ListDetailSerializer
+        if self.request.method in SAFE_METHODS:
+            return serializers.ListDetailSerializer
         return self.serializer_class

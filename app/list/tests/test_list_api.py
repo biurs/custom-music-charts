@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from core.models import List, Album, Artist, Entry
 
-from list.serializers import ListSerializer
+from list.serializers import ListDetailSerializer, ListSerializer
 
 from decimal import Decimal
 
@@ -106,6 +106,23 @@ class PublicListAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['results'], serializer.data)
 
+    def test_retrieve_specific_list(self):
+        """Test retrieving detail view of specific list."""
+        album1 = create_album()
+        list1 = create_list(user=self.test_user, public=True)
+        create_entry(album1, list1)
+        query_params = {
+            'public': True
+        }
+
+        specific_url = specific_list_url(list1.id)
+
+        res = self.client.get(specific_url, query_params)
+
+        serializer = ListDetailSerializer(list1)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
+
 
 class PrivateListAPITests(TestCase):
     """Test authenticated user API requests."""
@@ -136,7 +153,7 @@ class PrivateListAPITests(TestCase):
         res = self.client.get(LISTS_URL, query_params)
 
         lists = List.objects.filter(public=True).order_by('-id')
-        serializer = ListSerializer(lists, many=True)
+        serializer = ListDetailSerializer(lists, many=True)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['results'], serializer.data)
 
@@ -155,13 +172,12 @@ class PrivateListAPITests(TestCase):
     def test_create_list_with_items(self):
         """Test creating a list with items."""
         album1 = create_album()
+        album2 = create_album(title='title2')
         payload = {
             'label': 'Test List',
             'albums': [
                 {
-                    'album': {
-                        'id': album1.id
-                    },
+                    'album':  album1.id,
                     'description': 'Sample Description',
                 }
             ]
@@ -172,3 +188,65 @@ class PrivateListAPITests(TestCase):
         self.assertEqual(lists.count(), 1)
         list = lists[0]
         self.assertEqual(list.entries.count(), 1)
+
+    def test_delete_list(self):
+        """Test deleting a list"""
+        list1 = create_list(user=self.user)
+        url = specific_list_url(list1.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(List.objects.filter(id=list1.id).exists())
+
+    def test_delete_other_user_list(self):
+        """Test deleting another users list fails."""
+        list1 = create_list(user=self.user2, public=True)
+        url = specific_list_url(list1.id)
+        query_params = {
+            'Public': True
+        }
+
+        res = self.client.delete(url, query_params)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_list_with_entries(self):
+        """Test deleting a list with entries."""
+        list1 = create_list(user=self.user)
+        album1 = create_album()
+        entry1 = create_entry(album1, list1)
+
+        url = specific_list_url(list1.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(List.objects.filter(id=list1.id).exists())
+        self.assertFalse(Entry.objects.filter(id=entry1.id).exists())
+        self.assertTrue(Album.objects.filter(id=album1.id).exists())
+
+    def test_patch_list(self):
+        """Test patching a list"""
+        list1 = create_list(user=self.user)
+        album1 = create_album()
+        album2 = create_album(title='Album 2')
+        create_entry(album1, list1)
+        new_description = 'New Description'
+        new_label = 'New List Label'
+
+        payload = {
+            'label': new_label,
+            'albums': [
+                {
+                    'album': album2.id,
+                    'description': new_description,
+                }
+            ]
+        }
+
+        url = specific_list_url(list1.id)
+        res = self.client.patch(url, payload, format='json')
+        updated_list = List.objects.get(id=list1.id)
+        updated_list.albums.all()[0].id
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(album2.id, updated_list.albums.all()[0].id)
+        self.assertEqual(new_description, updated_list.entries.all()[0].description)
+        self.assertEqual(new_label, updated_list.label)
