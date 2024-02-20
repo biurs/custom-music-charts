@@ -250,3 +250,17 @@ class PrivateListAPITests(TestCase):
         self.assertEqual(album2.id, updated_list.albums.all()[0].id)
         self.assertEqual(new_description, updated_list.entries.all()[0].description)
         self.assertEqual(new_label, updated_list.label)
+
+    def test_delete_list_with_entries(self):
+        """Test deleting a list with entries"""
+        list1 = create_list(user=self.user)
+        album1 = create_album()
+        entry1 = create_entry(album1, list1)
+
+        url = specific_list_url(list1.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Entry.objects.filter(id=entry1.id).exists())
+        self.assertTrue(Album.objects.filter(id=album1.id).exists())
+        self.assertFalse(List.objects.filter(id=list1.id).exists())

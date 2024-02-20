@@ -40,8 +40,8 @@ class PublicArtistAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-    def test_auth_required(self):
-        """"Test auth is required to call API."""
+    def test_unauth_list(self):
+        """"Test unauth can get artist list."""
         res = self.client.get(ARTISTS_URL)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
