@@ -4,18 +4,19 @@ URLs for Search API.
 
 from django.urls import (
     path,
-    include
+    include,
 )
 
 from rest_framework.routers import DefaultRouter
 
+
 from search import views
 
-router = DefaultRouter()
-router.register('', views.SearchArtist)
+# router = DefaultRouter()
+# router.register('', views.SearchArtist)
 
 app_name = 'search'
 
 urlpatterns = [
-    path('', include(router.urls))
+    path('', views.Search.as_view({'get': 'list'}), name='search')
 ]

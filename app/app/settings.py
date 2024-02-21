@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'user',
     'album',
     'artist',
+    'search',
 ]
 
 MIDDLEWARE = [

@@ -10,7 +10,6 @@ from core.models import Album, Artist, Genre
 
 class ArtistHelperSerializer(serializers.ModelSerializer):
     """Serializer for artists."""
-
     class Meta:
         model = Artist
         fields = ['id', 'name']
@@ -38,7 +37,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class AlbumSerializer(serializers.ModelSerializer):
     """Serializer for albums."""
-    artist = ArtistHelperSerializer(many=True, required=True)
+    artist = ArtistHelperSerializer(many=True, required=False)
     release_date = serializers.DateField()
     primary_genres = GenreSerializer(many=True, required=False)
     secondary_genres = GenreSerializer(many=True, required=False)
@@ -71,7 +70,7 @@ class AlbumSerializer(serializers.ModelSerializer):
         artists = validated_data.pop('artist', [])
         primary_genres = validated_data.pop('primary_genres', [])
         secondary_genres = validated_data.pop('secondary_genres', [])
-        album = Album.objects.create(**validated_data)
+        album = Album.objects.create(**validated_data, )
         self._get_or_create_artist(artists=artists, album=album)
         self._get_or_create_genres(genres=primary_genres, album=album, primary=True)
         self._get_or_create_genres(genres=secondary_genres, album=album, primary=False)

@@ -10,7 +10,8 @@ from rest_framework.test import APIClient
 
 from core.models import Artist
 
-from artist.serializers import ArtistSerializer
+from search.serializers import SearchSerializer
+
 
 
 SEARCH_URL = reverse('search:search')
@@ -35,19 +36,42 @@ class PublicArtistAPITests(TestCase):
         self.client = APIClient()
 
     def test_search(self):
-        """"Test unauth can get artist list."""
+        """Test search returns artist with matching name."""
         art1 = create_artist(name='abcde 123')
-        art2 = create_artist(name='bcd 123')
-        art4 = create_artist(name='abc 1')
-        art3 = create_artist(name='zyx 123')
-        art5 = create_artist(name='zyx 987')
-
-        artists = Artist.objects.all().order_by('-id')
-        serializer = Artist.s
-
-        res = self.client.get(SEARCH_URL)
         query_params = {
-            'term': 'abcde 123'
+            'term': 'abcd 123'
         }
+        res = self.client.get(SEARCH_URL, query_params)
+
+        serial_res = SearchSerializer(art1)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serial_res.data)
+
+    def test_search_order_priority(self):
+        """"Test artist list returned in correct order by similarity."""
+        art1 = create_artist(name='abcde 123')
+        art3 = create_artist(name='zyx 123')
+        art2 = create_artist(name='bcd 123')
+
+        query_params = {
+            'term': 'abcd 123'
+        }
+        res = self.client.get(SEARCH_URL, query_params)
+
+        serial_res = SearchSerializer([art1, art2, art3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serial_res.data)
+
+    def test_search_with_no_results(self):
+        """Test results when no matching query."""
+        art1 = create_artist(name='abcde 123')
+        query_params = {
+            'term': 'zyx'
+        }
+        res = self.client.get(SEARCH_URL, query_params)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['results']), 0)
+
+
+

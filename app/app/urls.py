@@ -33,5 +33,5 @@ urlpatterns = [
     path('api/album/', include('album.urls')),
     path('api/artist/', include('artist.urls')),
     path('api/list/', include('list.urls')),
-    path('api/search', include('search.urls')),
+    path('api/search/', include('search.urls')),
 ]

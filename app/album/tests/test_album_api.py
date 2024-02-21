@@ -249,18 +249,18 @@ class PrivateAlbumSuperuserApiTests(TestCase):
                 ).exists()
             )
 
-    def test_create_album_with_no_artist_fail(self):
-        """Test creating album with no artist fails."""
-        payload = {
-            'title': 'Sample Album',
-            'release_date': date.fromisoformat('2000-01-01'),
-            'avg_rating': Decimal('1.00'),
-            'rating_count': 100,
-        }
-        res = self.client.post(ALBUMS_URL, payload)
+    # def test_create_album_with_no_artist_fail(self):
+    #     """Test creating album with no artist fails."""
+    #     payload = {
+    #         'title': 'Sample Album',
+    #         'release_date': date.fromisoformat('2000-01-01'),
+    #         'avg_rating': Decimal('1.00'),
+    #         'rating_count': 100,
+    #     }
+    #     res = self.client.post(ALBUMS_URL, payload)
 
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(Album.objects.all().count(), 0)
+    #     self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+    #     self.assertEqual(Album.objects.all().count(), 0)
 
     def test_create_album_multiple_artists(self):
         """Test creating an album with multiple artists."""

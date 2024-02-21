@@ -71,7 +71,7 @@ class Artist(models.Model):
 class Album(models.Model):
     """Album object."""
     title = models.CharField(max_length=255)
-    artist = models.ManyToManyField('Artist', related_name='artists_albums')
+    artist = models.ManyToManyField('Artist')
     release_date = models.DateField()
     avg_rating = models.DecimalField(max_digits=3, decimal_places=2)
     rating_count = models.IntegerField()
