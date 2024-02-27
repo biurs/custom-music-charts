@@ -47,7 +47,6 @@ def create_album(**params):
         'release_date': date.fromisoformat('2000-01-01'),
         'avg_rating': Decimal('1.00'),
         'rating_count': 1_000,
-        'link': 'https://example.com/album_art',
     }
     defaults.update(params)
 
@@ -212,32 +211,33 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['results'], serializer.data)
 
-    def test_create_album_with_new_artist(self):
-        """Test creating an album"""
-        payload = {
-            'title': 'Sample Album Title',
-            'artist': [{'name': 'Sample Artist'}],
-            'release_date': date.fromisoformat('2001-01-01'),
-            'avg_rating': Decimal('1.00'),
-            'rating_count': 1
-        }
-        res = self.client.post(ALBUMS_URL, payload, format='json')
+    # def test_create_album_with_new_artist(self):
+    #     """Test creating an album"""
+    #     artist1 = create_artist('artist1')
+    #     payload = {
+    #         'title': 'Sample Album Title',
+    #         'artist': [{'id': artist1.id}],
+    #         'release_date': date.fromisoformat('2001-01-01'),
+    #         'avg_rating': Decimal('1.00'),
+    #         'rating_count': 1
+    #     }
+    #     res = self.client.post(ALBUMS_URL, payload, format='json')
 
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        album = Album.objects.get(id=res.data['id'])
-        for k, v in payload.items():
-            if k == 'artist':
-                artist = Artist.objects.get(name=payload['artist'][0]['name'])
-                self.assertIn(artist, album.artist.all())
-            else:
-                self.assertEqual(getattr(album, k), v)
+    #     self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+    #     album = Album.objects.get(id=res.data['id'])
+    #     for k, v in payload.items():
+    #         if k == 'artist':
+    #             artist = Artist.objects.get(name=payload['artist'][0]['name'])
+    #             self.assertIn(artist, album.artist.all())
+    #         else:
+    #             self.assertEqual(getattr(album, k), v)
 
     def test_create_album_with_existing_artist(self):
         """Test creating an album with an existing artist."""
         artist = create_artist(name='Sample Artist')
         payload = {
             'title': 'Sample Album',
-            'artist': [{'name': 'Sample Artist'}],
+            'artist': [{'id': artist.id}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 100,
@@ -254,7 +254,7 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         for artist in payload['artist']:
             self.assertTrue(
                 Artist.objects.filter(
-                name=artist['name']
+                id=artist['id']
                 ).exists()
             )
 
@@ -273,9 +273,11 @@ class PrivateAlbumSuperuserApiTests(TestCase):
 
     def test_create_album_multiple_artists(self):
         """Test creating an album with multiple artists."""
+        artist1 = create_artist('artist1')
+        artist2 = create_artist('artist2')
         payload = {
             'title': 'Sample Album',
-            'artist': [{'name': 'Sample Artist'}, {'name': 'Sample Artist 2'}],
+            'artist': [{'id': artist1.id}, {'id': artist2.id}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 100,
@@ -311,7 +313,6 @@ class PrivateAlbumSuperuserApiTests(TestCase):
 
         payload = {
             'title': 'Sample Album 2',
-            'artist': [{'name': 'Sample Artist 2'}],
             'release_date': date.fromisoformat('2000-02-02'),
             'avg_rating': Decimal('2.00'),
             'rating_count': 200,
@@ -342,7 +343,6 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         """Test creating album with new genres."""
         payload = {
             'title': 'Sample Album Name',
-            'artist': [{'name': 'Test Artist'}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 10,
@@ -372,7 +372,6 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         genre2 = Genre.objects.create(name='Free Jazz')
         payload = {
             'title': 'Sample Album Name',
-            'artist': [{'name': 'Test Artist'}],
             'release_date': date.fromisoformat('2000-01-01'),
             'avg_rating': Decimal('1.00'),
             'rating_count': 10,

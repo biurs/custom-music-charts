@@ -46,7 +46,6 @@ def create_album(**params):
         'release_date': date.fromisoformat('2000-01-01'),
         'avg_rating': Decimal('1.00'),
         'rating_count': 1_000,
-        'link': 'https://example.com/album_art',
     }
     defaults.update(params)
 

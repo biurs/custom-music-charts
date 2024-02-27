@@ -6,13 +6,17 @@ class SearchSerializer(serializers.BaseSerializer):
     """Serializer for artists."""
     def to_representation(self, instance):
         if isinstance(instance, Artist):
-            return {
+            returndict = {
                 'type': 'artist',
                 'name': instance.name,
                 'id': str(instance.id),
                 'start_year': instance.start_year,
                 'end_year': instance.end_year,
             }
+            if (instance.albums.exists()):
+                image = instance.albums.exists().image.url
+                returndict['image'] = image
+            return returndict
         if isinstance(instance, Album):
             genredict = {}
             for genre in instance.primary_genres.all():
@@ -25,6 +29,7 @@ class SearchSerializer(serializers.BaseSerializer):
                 'artist_id': instance.artist.first().id,
                 'release_date': instance.release_date,
                 'genrelist': genredict,
+                'image': instance.image.url,
             }
         if isinstance(instance, List):
             return {

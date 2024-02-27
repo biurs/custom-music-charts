@@ -13,11 +13,14 @@ class ArtistHelperSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artist
         fields = ['id', 'name']
-        read_only_fields = ['id']
         extra_kwargs = {
             'name': {
-                'validators': []
-            }
+                'validators': [],
+                'required': False
+            },
+            'id': {
+                    'read_only': False
+                }
         }
 
 
@@ -52,7 +55,7 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Album
-        fields = ['id', 'title', 'artist', 'release_date', 'avg_rating', 'rating_count', 'link', 'primary_genres', 'secondary_genres',]
+        fields = ['id', 'title', 'artist', 'release_date', 'avg_rating', 'rating_count', 'primary_genres', 'secondary_genres',]
         read_only_fields = ['id']
 
 
