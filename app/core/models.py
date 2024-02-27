@@ -1,6 +1,9 @@
 """
 Database models.
 """
+import uuid
+import os
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q, F
@@ -9,6 +12,13 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+
+def album_image_file_path(instance, filename):
+    """Generate file path for new recipe image."""
+    ext = os.path.splitext(filename)[1]
+    filename = f'{instance.id}{ext}'
+
+    return os.path.join('uploads', 'albums', filename)
 
 
 class UserManager(BaseUserManager):
@@ -79,6 +89,7 @@ class Album(models.Model):
     primary_genres = models.ManyToManyField('Genre', related_name='primary_albums', blank=True)
     secondary_genres = models.ManyToManyField('Genre', related_name='secondary_albums', blank=True)
     tags = models.ManyToManyField('Tag', related_name='tag_albums', blank=True)
+    image = models.ImageField(null=True, upload_to=album_image_file_path)
 
     def __str__(self):
         return self.title

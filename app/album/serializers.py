@@ -35,7 +35,7 @@ class GenreSerializer(serializers.ModelSerializer):
         }
 
 class GenreDetailSerializer(serializers.ModelSerializer):
-    
+
     class Meta:
         model = Genre
         fields = ['id', 'name', 'description']
@@ -106,3 +106,13 @@ class AlbumSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class AlbumImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading images to albums."""
+
+    class Meta:
+        model = Album
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image': {'required': 'True'}}
