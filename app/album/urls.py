@@ -12,6 +12,7 @@ from album import views
 
 
 router = DefaultRouter()
+router.register('genres', views.GenreViewSet)
 router.register('', views.AlbumViewSet)
 
 app_name = 'album'

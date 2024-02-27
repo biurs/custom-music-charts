@@ -1,21 +1,45 @@
 from rest_framework import serializers
 
-from core.models import Artist, Album
+from core.models import Artist, Album, List, Genre
 
 class SearchSerializer(serializers.BaseSerializer):
     """Serializer for artists."""
     def to_representation(self, instance):
         if isinstance(instance, Artist):
             return {
+                'type': 'artist',
                 'name': instance.name,
-                'id': instance.id,
+                'id': str(instance.id),
                 'start_year': instance.start_year,
                 'end_year': instance.end_year,
             }
         if isinstance(instance, Album):
+            genredict = {}
+            for genre in instance.primary_genres.all():
+                genredict[genre.name] = genre.id
             return {
+                'type': 'album',
                 'title': instance.title,
-                'id': instance.id,
+                'id': str(instance.id),
+                'artist_name': instance.artist.first().name,
+                'artist_id': instance.artist.first().id,
+                'release_date': instance.release_date,
+                'genrelist': genredict,
+            }
+        if isinstance(instance, List):
+            return {
+                'type': 'list',
+                'label': instance.label,
+                'id': str(instance.id),
+                'user_name': instance.user.name,
+                'user_id': instance.user.id,
+            }
+        if isinstance(instance, Genre):
+            return {
+                'type': 'genre',
+                'name': instance.name,
+                'description': instance.description,
+                'id': str(instance.id)
             }
         # similarity = serializers.FloatField()
         # id = serializers.IntegerField()

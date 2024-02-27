@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import serializers, fields, views, generics, viewsets
-from core.models import Artist, Album
+from core.models import Artist, Album, List, Genre
 from django.contrib.postgres.search import TrigramSimilarity
 from search.serializers import SearchSerializer
 from itertools import chain
@@ -45,7 +45,17 @@ class Search(viewsets.ReadOnlyModelViewSet):
                 ).filter(
                     similarity__gt=0.3
                 )
-            full_res = list(chain(artist_res, album_res))
+            list_res = List.objects.all().annotate(
+                    similarity=TrigramSimilarity('label', term)
+                ).filter(
+                    similarity__gt=0.3
+                )
+            genre_res = Genre.objects.all().annotate(
+                    similarity=TrigramSimilarity('name', term)
+                ).filter(
+                    similarity__gt=0.3
+                )
+            full_res = list(chain(artist_res, album_res, list_res, genre_res))
             return sorted(full_res, key=attrgetter('similarity'), reverse=True)
         else:
             return Artist.objects.none()

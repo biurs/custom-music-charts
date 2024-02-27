@@ -18,6 +18,7 @@ from datetime import date
 
 
 ALBUMS_URL = reverse('album:album-list')
+GENRES_URL = reverse('album:genre-list')
 
 
 def specific_album_url(album_id):
@@ -449,3 +450,14 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(album.primary_genres.count(), 0)
         self.assertEqual(album.secondary_genres.count(), 0)
+
+    def test_create_genre(self):
+        """Test creating a genre."""
+        payload = {
+            'name': 'Indie Rock',
+            'description': 'Sample Description'
+        }
+        res = self.client.post(GENRES_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Genre.objects.count(), 1)

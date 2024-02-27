@@ -87,6 +87,7 @@ class Album(models.Model):
 class Genre(models.Model):
     """Genres for albums."""
     name = models.CharField(max_length=255, unique=True)
+    description = models.CharField(max_length=511, blank=True)
 
     def __str__(self):
         return self.name

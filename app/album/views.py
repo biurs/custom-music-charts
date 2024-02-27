@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny, S
 
 from django_filters import rest_framework as filters
 
-from core.models import Album, Artist
+from core.models import Album, Artist, Genre
 from album import serializers
 
 
@@ -67,4 +67,20 @@ class ArtistViewSet(BaseAlbumAttrViewSet):
     queryset = Artist.objects.all()
 
     def perform_create(self, serializer):
+        serializer.save()
+
+class GenreViewSet(viewsets.ModelViewSet):
+    serializer_class = serializers.GenreSerializer
+    queryset = Genre.objects.all().order_by('id')
+    authentication_classes = [TokenAuthentication]
+
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        else:
+            return [IsAdminUser()]
+
+    def perform_create(self, serializer):
+        """Create a new album."""
         serializer.save()

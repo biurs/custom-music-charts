@@ -34,6 +34,14 @@ class GenreSerializer(serializers.ModelSerializer):
                 }
         }
 
+class GenreDetailSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Genre
+        fields = ['id', 'name', 'description']
+        read_only_fields = ['id']
+
+
 
 class AlbumSerializer(serializers.ModelSerializer):
     """Serializer for albums."""
