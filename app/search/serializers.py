@@ -18,9 +18,9 @@ class SearchSerializer(serializers.BaseSerializer):
                 returndict['image'] = image
             return returndict
         if isinstance(instance, Album):
-            genredict = {}
+            genrelist = []
             for genre in instance.primary_genres.all():
-                genredict[genre.name] = genre.id
+                genrelist.append([genre.id, genre.name])
             return {
                 'type': 'album',
                 'title': instance.title,
@@ -28,7 +28,7 @@ class SearchSerializer(serializers.BaseSerializer):
                 'artist_name': instance.artist.first().name,
                 'artist_id': instance.artist.first().id,
                 'release_date': instance.release_date,
-                'genrelist': genredict,
+                'genrelist': genrelist,
                 'image': instance.image.url,
             }
         if isinstance(instance, List):
