@@ -469,6 +469,63 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Genre.objects.count(), 1)
 
+    def test_filter_album_by_year(self):
+        """Test retrieving filtered list of albums by year."""
+        create_album()
+        album2 = create_album(title='Sample Album 2', release_date=(date(2020, 2, 1)))
+
+        query_params = {
+            'year': '2020'
+        }
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_album_after_year(self):
+        """Test retrieving filtered list of albums after year."""
+        create_album()
+        album2 = create_album(title='Sample Album 2', release_date=(date(2020, 2, 1)))
+
+        query_params = {
+            'year': '2019+'
+        }
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_album_before_year(self):
+        """Test retrieving filtered list of albums before year."""
+        create_album(release_date=(date(2022, 1, 1)))
+        album2 = create_album(title='Sample Album 2', release_date=(date(2019, 2, 1)))
+
+        query_params = {
+            'year': '2021-'
+        }
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_album_year_range(self):
+        """Test retrieving filtered list of albums in year range."""
+        create_album(release_date=(date(2022, 1, 1)))
+        album2 = create_album(title='Sample Album 2', release_date=(date(2019, 2, 1)))
+
+        query_params = {
+            'year': '2019,2021'
+        }
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+
 
 class ImageUploadTests(TestCase):
     """Tests for image upload API"""

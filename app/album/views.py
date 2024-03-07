@@ -16,6 +16,10 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny, S
 
 from django_filters import rest_framework as filters
 
+from django.db.models import Q
+
+import datetime
+
 from core.models import Album, Artist, Genre
 from album import serializers
 
@@ -25,6 +29,8 @@ class AlbumViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.AlbumSerializer
     queryset = Album.objects.all().order_by('id')
     authentication_classes = [TokenAuthentication]
+    # filter_backends = [filters.DjangoFilterBackend]
+    # filterset_fields = ['release_date']
 
 
     def get_permissions(self):
@@ -46,6 +52,34 @@ class AlbumViewSet(viewsets.ModelViewSet):
             return serializers.AlbumImageSerializer
 
         return self.serializer_class
+
+    def get_queryset(self):
+        """Retrieve album queryset."""
+        year = self.request.query_params.get('year')
+        queryset = self.queryset
+        if year:
+            yearlist = year.split(',')
+            startdate = datetime.date(int(yearlist[0][:4]), 1, 1)
+            if len(yearlist) == 1:
+                if yearlist[0][-1] == '+':
+                    queryset = queryset.filter(
+                        release_date__gte=startdate
+                    )
+                elif yearlist[0][-1] == '-':
+                    queryset = queryset.filter(
+                        release_date__lte=startdate
+                    )
+                else:
+                    queryset = queryset.filter(
+                        release_date__range=(startdate, datetime.date(int(yearlist[0][:4]), 12, 31))
+                    )
+            else:
+                startdate = datetime.date(int(yearlist[0]), 1, 1)
+                enddate = datetime.date(int(yearlist[1]), 1, 1)
+                queryset = queryset.filter(
+                    release_date__range=(startdate, enddate)
+                )
+        return queryset.order_by('id').distinct()
 
     @action(methods=['POST'], detail=True, url_path='upload-image')
     def upload_image(self, request, pk=None):

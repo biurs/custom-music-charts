@@ -18,6 +18,7 @@ from core.models import Album, Artist
 from artist import serializers
 
 
+
 class ArtistViewSet(viewsets.ModelViewSet):
     """View for manage recipe APIs."""
     serializer_class = serializers.ArtistSerializer

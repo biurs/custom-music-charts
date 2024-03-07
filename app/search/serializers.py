@@ -32,12 +32,17 @@ class SearchSerializer(serializers.BaseSerializer):
                 'image': instance.image.url,
             }
         if isinstance(instance, List):
+            imagelist = []
+            for album in instance.albums.order_by('id')[:4]:
+                if album.image.url:
+                    imagelist.append(album.image.url)
             return {
                 'type': 'list',
                 'label': instance.label,
                 'id': str(instance.id),
                 'user_name': instance.user.name,
                 'user_id': instance.user.id,
+                'imagelist': imagelist
             }
         if isinstance(instance, Genre):
             return {
