@@ -53,33 +53,53 @@ class AlbumViewSet(viewsets.ModelViewSet):
 
         return self.serializer_class
 
+    def _get_year_queryset(self, queryset, year):
+        """Retrieve queryset if year param."""
+        yearlist = year.split(',')
+        startdate = datetime.date(int(yearlist[0][:4]), 1, 1)
+        if len(yearlist) == 1:
+            if yearlist[0][-1] == '+':
+                queryset = queryset.filter(
+                    release_date__gte=startdate
+                )
+            elif yearlist[0][-1] == '-':
+                queryset = queryset.filter(
+                    release_date__lte=startdate
+                )
+            else:
+                queryset = queryset.filter(
+                    release_date__range=(startdate, datetime.date(int(yearlist[0][:4]), 12, 31))
+                )
+        else:
+            startdate = datetime.date(int(yearlist[0]), 1, 1)
+            enddate = datetime.date(int(yearlist[1]), 1, 1)
+            queryset = queryset.filter(
+                release_date__range=(startdate, enddate)
+            )
+        return queryset
+
     def get_queryset(self):
         """Retrieve album queryset."""
         year = self.request.query_params.get('year')
         queryset = self.queryset
         if year:
-            yearlist = year.split(',')
-            startdate = datetime.date(int(yearlist[0][:4]), 1, 1)
-            if len(yearlist) == 1:
-                if yearlist[0][-1] == '+':
-                    queryset = queryset.filter(
-                        release_date__gte=startdate
-                    )
-                elif yearlist[0][-1] == '-':
-                    queryset = queryset.filter(
-                        release_date__lte=startdate
-                    )
-                else:
-                    queryset = queryset.filter(
-                        release_date__range=(startdate, datetime.date(int(yearlist[0][:4]), 12, 31))
-                    )
-            else:
-                startdate = datetime.date(int(yearlist[0]), 1, 1)
-                enddate = datetime.date(int(yearlist[1]), 1, 1)
-                queryset = queryset.filter(
-                    release_date__range=(startdate, enddate)
-                )
+            queryset = self._get_year_queryset(queryset, year)
+        ingenres = self.request.query_params.get('ingenres')
+        if ingenres:
+            print(ingenres)
+            ingenres = ingenres.split(',')
+            for genre in ingenres:
+                genre = self._params_to_ints(genre)
+                queryset = queryset.filter(primary_genres__id=genre)
+        exgenres = self.request.query_params.get('exgenres')
+        if exgenres:
+            # print(exgenres)
+            exgenres = exgenres.split(',')
+            for genre in exgenres:
+                genre = self._params_to_ints(genre)
+            queryset = queryset.exclude(primary_genres__id__in=exgenres)
         return queryset.order_by('id').distinct()
+
 
     @action(methods=['POST'], detail=True, url_path='upload-image')
     def upload_image(self, request, pk=None):

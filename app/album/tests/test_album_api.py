@@ -39,6 +39,10 @@ def create_artist(name='Sample Artist Name'):
     artist = Artist.objects.get_or_create(name=name, start_year=2000)[0]
     return artist
 
+def create_genre(name='Sample Genre Name'):
+    genre = Genre.objects.get_or_create(name=name)[0]
+    return genre
+
 
 def create_album(**params):
     """Create and return a sample album."""
@@ -522,6 +526,95 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         res = self.client.get(ALBUMS_URL, query_params)
 
         serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_album_by_genre(self):
+        """Test filtering albums by genre"""
+        genre1 = create_genre(name='Sample Genre Name')
+        create_album()
+        album2 = create_album(
+            title='Sample Album 2',
+        )
+        album2.primary_genres.set([genre1])
+
+        query_params = {
+            'ingenres': genre1.id
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_album_by_multiple_genres(self):
+        """Test filtering albums by multiple genres"""
+        genre1 = create_genre(name='Sample Genre Name')
+        genre2 = create_genre(name='Sample Genre Name 2')
+        album1 = create_album()
+        album2 = create_album(
+            title='Sample Album 2',
+        )
+        album1.primary_genres.set([genre1])
+        album2.primary_genres.set([genre1, genre2])
+
+        query_params = {
+            'ingenres': f'{genre1.id},{genre2.id}'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_exclude_album_by_genre(self):
+        """Test excluding album by genre"""
+        genre1 = create_genre(name='Sample Genre Name')
+        genre2 = create_genre(name='Sample Genre Name 2')
+        album1 = create_album()
+        album2 = create_album(
+            title='Sample Album 2',
+        )
+        album1.primary_genres.set([genre1, genre2])
+        album2.primary_genres.set([genre2])
+
+        query_params = {
+            'exgenres': genre1.id
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_exclude_album_by_multiple_genres(self):
+        """Test excluding album by multiple genres."""
+        genre1 = create_genre(name='Sample Genre Name')
+        genre2 = create_genre(name='Sample Genre Name 2')
+        genre3 = create_genre(name='Sample Genre Name 3')
+
+        album1 = create_album()
+        album2 = create_album(
+            title='Sample Album 2',
+        )
+        album3 = create_album(
+            title='Sample Album 3',
+        )
+
+        album1.primary_genres.set([genre1])
+        album2.primary_genres.set([genre2])
+        album3.primary_genres.set([genre3])
+
+        query_params = {
+            'exgenres': f'{genre1.id},{genre2.id}'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album3)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['results'][0], serializer.data)
 
