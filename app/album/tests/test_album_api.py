@@ -618,7 +618,101 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['results'][0], serializer.data)
 
+    def test_sort_album_by_year_asc(self):
+        """Test sorting album list by year ascending"""
+        album1 = create_album(release_date=date(2001, 1, 1))
+        album2 = create_album(title='Sample Album 2', release_date=date(2002, 1, 1))
+        album3 = create_album(title='Sample Album 3', release_date=date(2003, 1, 1))
 
+        query_params = {
+            'sortby': 'year'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer([album1, album2, album3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_sort_album_by_year_desc(self):
+        """Test sorting album list by year descending."""
+        album3 = create_album(release_date=date(2001, 1, 1))
+        album2 = create_album(title='Sample Album 2', release_date=date(2002, 1, 1))
+        album1 = create_album(title='Sample Album 3', release_date=date(2003, 1, 1))
+
+        query_params = {
+            'sortby': '-year'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer([album1, album2, album3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_sort_album_by_rating_asc(self):
+        """Test sorting album list by rating ascending"""
+        album1 = create_album(avg_rating=Decimal('1.00'))
+        album2 = create_album(title='Sample Album 2', avg_rating=Decimal('2.00'))
+        album3 = create_album(title='Sample Album 3', avg_rating=Decimal('3.00'))
+
+        query_params = {
+            'sortby': 'rating'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer([album1, album2, album3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_sort_album_by_year_desc(self):
+        """Test sorting album list by rating descending."""
+        album3 = create_album(avg_rating=Decimal('1.00'))
+        album2 = create_album(title='Sample Album 2', avg_rating=Decimal('2.00'))
+        album1 = create_album(title='Sample Album 3', avg_rating=Decimal('3.00'))
+
+        query_params = {
+            'sortby': '-rating'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer([album1, album2, album3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_sort_album_by_rating_count_asc(self):
+        """Test sorting album list by rating count ascending"""
+        album1 = create_album(rating_count=1)
+        album2 = create_album(title='Sample Album 2', rating_count=2)
+        album3 = create_album(title='Sample Album 3', rating_count=3)
+
+        query_params = {
+            'sortby': 'ratingcount'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer([album1, album2, album3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
+
+    def test_sort_album_by_rating_count_desc(self):
+        """Test sorting album list by rating count descending"""
+        album3 = create_album(rating_count=1)
+        album2 = create_album(title='Sample Album 2', rating_count=2)
+        album1 = create_album(title='Sample Album 3', rating_count=3)
+
+        query_params = {
+            'sortby': '-ratingcount'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer([album1, album2, album3], many=True)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'], serializer.data)
 
 class ImageUploadTests(TestCase):
     """Tests for image upload API"""

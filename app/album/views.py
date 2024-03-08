@@ -54,7 +54,7 @@ class AlbumViewSet(viewsets.ModelViewSet):
         return self.serializer_class
 
     def _get_year_queryset(self, queryset, year):
-        """Retrieve queryset if year param."""
+        """Filter albums by year"""
         yearlist = year.split(',')
         startdate = datetime.date(int(yearlist[0][:4]), 1, 1)
         if len(yearlist) == 1:
@@ -78,6 +78,22 @@ class AlbumViewSet(viewsets.ModelViewSet):
             )
         return queryset
 
+    def _get_filter_genre_queryset(self, queryset, genres):
+        """Filter albums by genres in list"""
+        genres = genres.split(',')
+        for genre in genres:
+            genre = self._params_to_ints(genre)
+            queryset = queryset.filter(primary_genres__id=genre)
+        return queryset
+
+    def _get_exclude_genre_queryset(self, queryset, genres):
+        """Exclude albums by genre in list"""
+        genres = genres.split(',')
+        for genre in genres:
+            genre = self._params_to_ints(genre)
+        queryset = queryset.exclude(primary_genres__id__in=genres)
+        return queryset
+
     def get_queryset(self):
         """Retrieve album queryset."""
         year = self.request.query_params.get('year')
@@ -86,18 +102,24 @@ class AlbumViewSet(viewsets.ModelViewSet):
             queryset = self._get_year_queryset(queryset, year)
         ingenres = self.request.query_params.get('ingenres')
         if ingenres:
-            print(ingenres)
-            ingenres = ingenres.split(',')
-            for genre in ingenres:
-                genre = self._params_to_ints(genre)
-                queryset = queryset.filter(primary_genres__id=genre)
+            queryset = self._get_filter_genre_queryset(queryset, ingenres)
         exgenres = self.request.query_params.get('exgenres')
         if exgenres:
-            # print(exgenres)
-            exgenres = exgenres.split(',')
-            for genre in exgenres:
-                genre = self._params_to_ints(genre)
-            queryset = queryset.exclude(primary_genres__id__in=exgenres)
+            queryset = self._get_exclude_genre_queryset(queryset, exgenres)
+        sortby = self.request.query_params.get('sortby')
+        if sortby:
+            if sortby == 'year':
+                return queryset.order_by('release_date').distinct()
+            elif sortby == '-year':
+                return queryset.order_by('-release_date').distinct()
+            elif sortby == 'rating':
+                return queryset.order_by('avg_rating').distinct()
+            elif sortby == '-rating':
+                return queryset.order_by('-avg_rating').distinct()
+            elif sortby == 'ratingcount':
+                return queryset.order_by('rating_count').distinct()
+            elif sortby == '-ratingcount':
+                return queryset.order_by('-rating_count').distinct()
         return queryset.order_by('id').distinct()
 
 
