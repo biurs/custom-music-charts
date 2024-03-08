@@ -618,6 +618,66 @@ class PrivateAlbumSuperuserApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['results'][0], serializer.data)
 
+    def test_filter_albums_min_rating_count(self):
+        """Test filtering album list by minimum rating count."""
+        create_album(rating_count=10)
+        album2 = create_album(title='Sample Title 2', rating_count=20)
+
+        query_params = {
+            'rating_count': '12+'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_albums_max_rating_count(self):
+        """Test filtering album list by max rating count."""
+        create_album(rating_count=20)
+        album2 = create_album(title='Sample Title 2', rating_count=10)
+
+        query_params = {
+            'rating_count': '12-'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_albums_min_avg_rating(self):
+        """Test filtering album list by minimum average rating."""
+        create_album(avg_rating=Decimal('1.00'))
+        album2 = create_album(title='Sample Title 2', avg_rating=Decimal('2.00'))
+
+        query_params = {
+            'avg_rating': '1.50+'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
+    def test_filter_albums_max_avg_rating(self):
+        """Test filtering album list by maximum average rating."""
+        create_album(avg_rating=Decimal('2.00'))
+        album2 = create_album(title='Sample Title 2', avg_rating=Decimal('1.00'))
+
+        query_params = {
+            'avg_rating': '1.50-'
+        }
+
+        res = self.client.get(ALBUMS_URL, query_params)
+
+        serializer = AlbumSerializer(album2)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['results'][0], serializer.data)
+
     def test_sort_album_by_year_asc(self):
         """Test sorting album list by year ascending"""
         album1 = create_album(release_date=date(2001, 1, 1))

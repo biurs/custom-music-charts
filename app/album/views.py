@@ -23,6 +23,7 @@ import datetime
 from core.models import Album, Artist, Genre
 from album import serializers
 
+from decimal import Decimal
 
 class AlbumViewSet(viewsets.ModelViewSet):
     """View for manage recipe APIs."""
@@ -94,6 +95,24 @@ class AlbumViewSet(viewsets.ModelViewSet):
         queryset = queryset.exclude(primary_genres__id__in=genres)
         return queryset
 
+    def _get_rating_count_queryset(self, queryset, rating_count):
+        """Filter albums by rating count"""
+        if rating_count[-1] == '+':
+            rating_count = int(rating_count[:-1])
+            return queryset.filter(rating_count__gte=rating_count)
+        else:
+            rating_count = int(rating_count[:-1])
+            return queryset.filter(rating_count__lte=rating_count)
+
+    def _get_avg_rating_queryset(self, queryset, rating):
+        """Filter albums by average rating"""
+        if rating[-1] == '+':
+            rating = Decimal(rating[:-1])
+            return queryset.filter(avg_rating__gte=rating)
+        else:
+            rating = Decimal(rating[:-1])
+            return queryset.filter(avg_rating__lte=rating)
+
     def get_queryset(self):
         """Retrieve album queryset."""
         year = self.request.query_params.get('year')
@@ -106,6 +125,12 @@ class AlbumViewSet(viewsets.ModelViewSet):
         exgenres = self.request.query_params.get('exgenres')
         if exgenres:
             queryset = self._get_exclude_genre_queryset(queryset, exgenres)
+        rating_count = self.request.query_params.get('rating_count')
+        if rating_count:
+            queryset = self._get_rating_count_queryset(queryset, rating_count)
+        avg_rating = self.request.query_params.get('avg_rating')
+        if avg_rating:
+            queryset = self._get_avg_rating_queryset(queryset, avg_rating)
         sortby = self.request.query_params.get('sortby')
         if sortby:
             if sortby == 'year':
